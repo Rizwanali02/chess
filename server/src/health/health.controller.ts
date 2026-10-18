@@ -8,6 +8,7 @@ export class HealthController {
   @Get()
   async check() {
     const databaseConnected = await this.database.ping();
+    console.log("------------server running------------");
 
     return {
       success: true,
