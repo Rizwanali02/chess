@@ -60,3 +60,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 *.njsproj
 *.sln
 *.sw?
+
+# Preserve nested server Git history locally without adding it to the root repo
+server/.git-standalone-backup/
