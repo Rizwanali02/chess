@@ -18,7 +18,7 @@ import { AuthService } from './auth.service.js';
 
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
@@ -48,16 +48,19 @@ export class AuthController {
   }
 
   @Post('auth/logout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  logout(
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  @HttpCode(HttpStatus.OK)
+  logout(@Res({ passthrough: true }) response: Response) {
     response.clearCookie('auth_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'none',
       path: '/',
     });
+
+    return {
+      success: true,
+      message: 'Logout successful',
+    };
   }
 
   @Get('me')

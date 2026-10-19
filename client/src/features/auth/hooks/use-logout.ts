@@ -12,21 +12,29 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: () => logoutRequest(),
-    onSettled: async () => {
+
+    onSettled: async (_data, error) => {
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('auth_token')
+
       disconnectAllSockets()
+
       queryClient.setQueryData(queryKeys.auth.me, null)
       queryClient.removeQueries({
         predicate: (query) => query.queryKey[0] !== 'auth',
       })
-      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
+
       navigate('/login', { replace: true })
-    },
-    onError: (error: unknown) => {
-      toast.error(
-        error instanceof ApiError
-          ? `Sign out could not be confirmed: ${error.message}`
-          : 'Sign out could not be confirmed. Check your connection.',
-      )
+
+      if (error) {
+        toast.error(
+          error instanceof ApiError
+            ? `Local logout complete. ${error.message}`
+            : 'Local logout complete, but server session could not be confirmed.',
+        )
+      } else {
+        toast.success('Logout successful. Session cleared.')
+      }
     },
   })
 }
