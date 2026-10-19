@@ -22,7 +22,7 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 VITE_SOCKET_URL=http://localhost:8000
 ```
 
-`VITE_API_BASE_URL` includes the `/api/v1` prefix. `VITE_SOCKET_URL` is the Socket.IO server origin without a namespace. Authenticated REST and socket connections send the server's HttpOnly `access_token` cookie; the client never reads or stores the token.
+`VITE_API_BASE_URL` includes the `/api/v1` prefix. `VITE_SOCKET_URL` is the Socket.IO server origin without a namespace. Authenticated REST and socket connections send the server's HttpOnly `auth_token` cookie; the client never reads or stores the token.
 
 ## Scripts
 

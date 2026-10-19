@@ -45,7 +45,7 @@ export class MatchesGateway implements OnGatewayConnection {
 
             if (!cookieHeader) throw new Error('Missing cookie');
 
-            const token = parse(cookieHeader).access_token;
+            const token = parse(cookieHeader).auth_token;
 
             if (!token) throw new Error('Missing access token');
 

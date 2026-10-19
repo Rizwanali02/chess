@@ -49,7 +49,7 @@ export class MatchmakingGateway
       }
 
       const cookies = parse(cookieHeader);
-      const token = cookies['access_token'];
+      const token = cookies['auth_token'];
 
       if (!token) {
         throw new Error('Missing access token');

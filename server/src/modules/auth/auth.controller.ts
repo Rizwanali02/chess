@@ -33,7 +33,7 @@ export class AuthController {
 
     const result = await this.authService.login(user);
 
-    response.cookie('access_token', result.accessToken, {
+    response.cookie('auth_token', result.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -52,7 +52,7 @@ export class AuthController {
   logout(
     @Res({ passthrough: true }) response: Response,
   ) {
-    response.clearCookie('access_token', {
+    response.clearCookie('auth_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

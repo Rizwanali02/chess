@@ -30,7 +30,7 @@ export class JwtAuthGuard implements CanActivate {
     const request = http.getRequest<AuthenticatedRequest>();
     const response = http.getResponse<Response>();
 
-    const token = request.cookies?.['access_token'];
+    const token = request.cookies?.['auth_token'];
 
     if (typeof token !== 'string' || !token) {
       throw new UnauthorizedException('Authentication required');
@@ -56,7 +56,7 @@ export class JwtAuthGuard implements CanActivate {
 
       return true;
     } catch {
-      response.clearCookie('access_token', {
+      response.clearCookie('auth_token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
