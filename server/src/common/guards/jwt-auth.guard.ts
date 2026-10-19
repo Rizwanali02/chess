@@ -1,3 +1,4 @@
+
 import {
   CanActivate,
   ExecutionContext,
@@ -23,16 +24,23 @@ interface JwtPayload {
 export class JwtAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 
-  async canActivate(
-    context: ExecutionContext,
-  ): Promise<boolean> {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const http = context.switchToHttp();
     const request = http.getRequest<AuthenticatedRequest>();
     const response = http.getResponse<Response>();
 
-    const token = request.cookies?.['auth_token'];
+    const authorization = request.headers.authorization;
 
-    if (typeof token !== 'string' || !token) {
+    const bearerToken =
+      authorization?.startsWith('Bearer ')
+        ? authorization.slice(7).trim()
+        : undefined;
+
+    const cookieToken = request.cookies?.['auth_token'];
+
+    const token = bearerToken || cookieToken;
+
+    if (!token) {
       throw new UnauthorizedException('Authentication required');
     }
 
@@ -56,12 +64,15 @@ export class JwtAuthGuard implements CanActivate {
 
       return true;
     } catch {
-      response.clearCookie('auth_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-      });
+      if (!bearerToken && cookieToken) {
+        response.clearCookie('auth_token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite:
+            process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          path: '/',
+        });
+      }
 
       throw new UnauthorizedException('Invalid or expired token');
     }
