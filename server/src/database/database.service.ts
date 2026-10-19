@@ -14,19 +14,23 @@ export class DatabaseService implements OnModuleDestroy {
 
   readonly db: NodePgDatabase<typeof schema>;
 
-  constructor(config: ConfigService) {
-    const connectionString =
-      config.getOrThrow<string>('DATABASE_URL');
 
+  constructor(config: ConfigService) {
     this.pool = new Pool({
-      connectionString,
+      host: config.getOrThrow<string>('DB_HOST'),
+      port: config.get<number>('DB_PORT') ?? 5432,
+      database: config.getOrThrow<string>('DB_NAME'),
+      user: config.getOrThrow<string>('DB_USER'),
+      password: config.getOrThrow<string>('DB_PASSWORD'),
       max: 5,
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 10000,
       idleTimeoutMillis: 30000,
+      ssl: { rejectUnauthorized: false },
     });
 
     this.db = drizzle(this.pool, { schema });
   }
+
 
   async onModuleDestroy() {
     await this.pool.end();
