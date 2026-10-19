@@ -1,5 +1,15 @@
+
+import axios, {
+  type AxiosRequestConfig,
+  type Method,
+} from 'axios'
+
 import { env } from '@/lib/env'
-import { ApiError, normalizeApiError, toApiError } from '@/lib/api-error'
+import {
+  ApiError,
+  normalizeApiError,
+  toApiError,
+} from '@/lib/api-error'
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
@@ -7,79 +17,130 @@ type RequestOptions = {
   method?: HttpMethod
   body?: unknown
   signal?: AbortSignal
-  headers?: HeadersInit
-  searchParams?: Record<string, string | number | boolean | undefined | null>
+  headers?: AxiosRequestConfig['headers']
+  searchParams?: Record<
+    string,
+    string | number | boolean | undefined | null
+  >
 }
 
-function buildUrl(
+const api = axios.create({
+  baseURL: env.apiBaseUrl.replace(/\/+$/, ''),
+  withCredentials: true,
+  timeout: 15000,
+  headers: {
+    Accept: 'application/json',
+  },
+})
+
+async function request<T>(
   path: string,
-  searchParams?: RequestOptions['searchParams'],
-): string {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  const url = new URL(`${env.apiBaseUrl}${normalizedPath}`)
+  options: RequestOptions = {},
+): Promise<T> {
+  const {
+    method = 'GET',
+    body,
+    signal,
+    headers,
+    searchParams,
+  } = options
 
-  if (searchParams) {
-    for (const [key, value] of Object.entries(searchParams)) {
-      if (value === undefined || value === null || value === '') continue
-      url.searchParams.set(key, String(value))
-    }
-  }
-
-  return url.toString()
-}
-
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, signal, headers, searchParams } = options
+  // Pass only the endpoint path here, e.g. /auth/login.
+  // Axios will add the baseURL automatically.
+  const normalizedPath = path.startsWith('/')
+    ? path
+    : `/${path}`
 
   try {
-    const response = await fetch(buildUrl(path, searchParams), {
-      method,
-      credentials: 'include',
+    const response = await api.request<T>({
+      url: normalizedPath,
+      method: method as Method,
+      data: body,
       signal,
-      headers: {
-        Accept: 'application/json',
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...headers,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      headers,
+      params: searchParams,
     })
 
     if (response.status === 204) {
       return undefined as T
     }
 
-    if (!response.ok) {
+    return response.data
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      const response = new Response(
+        JSON.stringify(error.response.data ?? {}),
+        {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
       throw await normalizeApiError(response)
     }
 
-    const contentType = response.headers.get('content-type') ?? ''
-    if (!contentType.includes('application/json')) {
-      return undefined as T
-    }
-
-    return (await response.json()) as T
-  } catch (error) {
     throw toApiError(error)
   }
 }
 
 export const apiClient = {
-  get: <T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) =>
-    request<T>(path, { ...options, method: 'GET' }),
+  get: <T>(
+    path: string,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
+  ) =>
+    request<T>(path, {
+      ...options,
+      method: 'GET',
+    }),
+
   post: <T>(
     path: string,
     body?: unknown,
     options?: Omit<RequestOptions, 'method' | 'body'>,
-  ) => request<T>(path, { ...options, method: 'POST', body }),
+  ) =>
+    request<T>(path, {
+      ...options,
+      method: 'POST',
+      body,
+    }),
+
   patch: <T>(
     path: string,
     body?: unknown,
     options?: Omit<RequestOptions, 'method' | 'body'>,
-  ) => request<T>(path, { ...options, method: 'PATCH', body }),
-  delete: <T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) =>
-    request<T>(path, { ...options, method: 'DELETE' }),
+  ) =>
+    request<T>(path, {
+      ...options,
+      method: 'PATCH',
+      body,
+    }),
+
+  put: <T>(
+    path: string,
+    body?: unknown,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
+  ) =>
+    request<T>(path, {
+      ...options,
+      method: 'PUT',
+      body,
+    }),
+
+  delete: <T>(
+    path: string,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
+  ) =>
+    request<T>(path, {
+      ...options,
+      method: 'DELETE',
+    }),
 }
 
-export function isApiError(error: unknown): error is ApiError {
+export function isApiError(
+  error: unknown,
+): error is ApiError {
   return error instanceof ApiError
 }
