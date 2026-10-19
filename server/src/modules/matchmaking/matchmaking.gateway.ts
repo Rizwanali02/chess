@@ -40,19 +40,34 @@ export class MatchmakingGateway
     private readonly matchmakingService: MatchmakingService,
   ) { }
 
-  async handleConnection(client: Socket) {
+  async handleConnection(client: Socket): Promise<void> {
     try {
-      const cookieHeader = client.handshake.headers.cookie;
+      // 1. Prefer token sent through Socket.IO handshake auth.
+      const handshakeToken = client.handshake.auth?.token;
 
-      if (!cookieHeader) {
-        throw new Error('Missing authentication cookie');
+      // 2. Fallback to Authorization: Bearer <token>.
+      const authorization = client.handshake.headers.authorization;
+      const bearerToken =
+        authorization?.startsWith('Bearer ')
+          ? authorization.slice(7).trim()
+          : undefined;
+
+      // 3. Fallback to auth_token cookie.
+      const cookieHeader = client.handshake.headers.cookie;
+      let cookieToken: string | undefined;
+
+      if (cookieHeader) {
+        const cookies = parse(cookieHeader);
+        cookieToken = cookies['auth_token'];
       }
 
-      const cookies = parse(cookieHeader);
-      const token = cookies['auth_token'];
+      const token =
+        (typeof handshakeToken === 'string' && handshakeToken.trim()) ||
+        bearerToken ||
+        cookieToken;
 
       if (!token) {
-        throw new Error('Missing access token');
+        throw new Error('Missing authentication token');
       }
 
       const payload = await this.jwtService.verifyAsync(token);
@@ -73,15 +88,23 @@ export class MatchmakingGateway
 
       client.data.user = user;
 
-      // All active tabs/devices for this user receive their events.
       await client.join(`user:${user.id}`);
 
       this.logger.log(`Authenticated socket for user ${user.id}`);
-      client.emit('socket:ready', { userId: user.id });
-    } catch {
+
+      client.emit('socket:ready', {
+        userId: user.id,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Socket authentication failed: ${error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+
       client.emit('socket:error', {
         message: 'Authentication failed. Please log in again.',
       });
+
       client.disconnect(true);
     }
   }
