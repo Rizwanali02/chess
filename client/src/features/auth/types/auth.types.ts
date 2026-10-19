@@ -5,6 +5,6 @@ export type LoginRequest = {
   password: string
 }
 
-export type LoginResponse = ApiSuccess<{ user: AuthUser }>
+export type LoginResponse = ApiSuccess<{ authToken: string; user: AuthUser }>
 
 export type MeResponse = ApiSuccess<AuthUser>

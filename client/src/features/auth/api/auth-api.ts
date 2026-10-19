@@ -8,7 +8,14 @@ import type { AuthUser } from '@/types/api'
 
 export async function loginRequest(payload: LoginRequest): Promise<AuthUser> {
   const response = await apiClient.post<LoginResponse>('/auth/login', payload)
-  return response.data.user
+  const { authToken, user } = response.data
+
+  if (authToken) {
+    localStorage.setItem('authToken', authToken)
+  }
+  console.log('loginRequest: user', authToken)
+
+  return user
 }
 
 export async function logoutRequest(): Promise<void> {

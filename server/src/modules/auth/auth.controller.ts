@@ -33,7 +33,7 @@ export class AuthController {
 
     const result = await this.authService.login(user);
 
-    response.cookie('auth_token', result.accessToken, {
+    response.cookie('auth_token', result.authToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -43,7 +43,7 @@ export class AuthController {
 
     return {
       success: true,
-      data: { user: result.user },
+      data: { user: result.user, authToken: result.authToken },
     };
   }
 
@@ -55,7 +55,7 @@ export class AuthController {
     response.clearCookie('auth_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none',
       path: '/',
     });
   }

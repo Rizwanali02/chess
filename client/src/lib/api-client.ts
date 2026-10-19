@@ -33,6 +33,21 @@ const api = axios.create({
   },
 })
 
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('authToken')
+
+      if (token) {
+        config.headers.set('Authorization', `Bearer ${token}`)
+      }
+    }
+
+    return config
+  },
+  (error: unknown) => Promise.reject(error),
+)
+
 async function request<T>(
   path: string,
   options: RequestOptions = {},
@@ -45,8 +60,6 @@ async function request<T>(
     searchParams,
   } = options
 
-  // Pass only the endpoint path here, e.g. /auth/login.
-  // Axios will add the baseURL automatically.
   const normalizedPath = path.startsWith('/')
     ? path
     : `/${path}`
@@ -61,14 +74,13 @@ async function request<T>(
       params: searchParams,
     })
 
-    if (response.status === 204) {
-      return undefined as T
-    }
-
     return response.data
   } catch (error: unknown) {
-    if (axios.isAxiosError(error) && error.response) {
-      const response = new Response(
+    if (
+      axios.isAxiosError(error) &&
+      error.response
+    ) {
+      const apiResponse = new Response(
         JSON.stringify(error.response.data ?? {}),
         {
           status: error.response.status,
@@ -79,7 +91,7 @@ async function request<T>(
         },
       )
 
-      throw await normalizeApiError(response)
+      throw await normalizeApiError(apiResponse)
     }
 
     throw toApiError(error)
