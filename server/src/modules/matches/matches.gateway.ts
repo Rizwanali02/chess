@@ -1,5 +1,5 @@
 
-import { Logger } from '@nestjs/common';
+import { HttpException, Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -173,15 +173,31 @@ export class MatchesGateway implements OnGatewayConnection {
       throw new WsException('matchId, from and to are required');
     }
 
-    const result = await this.matchesService.submitMove(
-      body.matchId,
-      user.id,
-      {
+    const result = await this.matchesService
+      .submitMove(body.matchId, user.id, {
         from: body.from,
         to: body.to,
         promotion: body.promotion,
-      },
-    );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof HttpException) {
+          const response = error.getResponse();
+          const message =
+            typeof response === 'string'
+              ? response
+              : typeof response === 'object' &&
+                  response !== null &&
+                  'message' in response
+                ? response.message
+                : error.message;
+
+          throw new WsException(
+            Array.isArray(message) ? message.join(', ') : String(message),
+          );
+        }
+
+        throw error;
+      });
 
     if (result.status === 'COMPLETED') {
       this.server.to(`match:${body.matchId}`).emit('match:finished', {

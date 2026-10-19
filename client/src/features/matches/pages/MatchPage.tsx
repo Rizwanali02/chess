@@ -100,6 +100,11 @@ export function MatchPage() {
     try {
       const chess = new Chess(match.fen)
       const candidates = chess.moves({ square: sourceSquare as Square, verbose: true })
+      const isLegalMove = candidates.some((move) => move.to === targetSquare)
+      if (!isLegalMove) {
+        toast.error('That move is not legal in the current position.')
+        return false
+      }
       const needsPromotion = candidates.some(
         (move) => move.to === targetSquare && move.promotion,
       )
