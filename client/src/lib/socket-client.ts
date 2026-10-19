@@ -13,6 +13,12 @@ type Namespace = 'matchmaking' | 'matches'
 
 const sockets = new Map<Namespace, Socket>()
 
+function getAuthToken(): string | undefined {
+  if (typeof window === 'undefined') return undefined
+
+  return localStorage.getItem('authToken') ?? undefined
+}
+
 function createSocket(namespace: Namespace): Socket {
   const socket = io(`${env.socketUrl}/${namespace}`, {
     autoConnect: false,
@@ -23,6 +29,12 @@ function createSocket(namespace: Namespace): Socket {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 10000,
+
+    auth: (callback) => {
+      callback({
+        token: getAuthToken(),
+      })
+    },
   })
 
   sockets.set(namespace, socket)
@@ -35,15 +47,23 @@ export function getSocket(namespace: Namespace): Socket {
 
 export function connectSocket(namespace: Namespace): Socket {
   const socket = getSocket(namespace)
+
+  // Refresh the token before every new connection.
+  socket.auth = {
+    token: getAuthToken(),
+  }
+
   if (!socket.connected) {
     socket.connect()
   }
+
   return socket
 }
 
 export function disconnectSocket(namespace: Namespace): void {
   const socket = sockets.get(namespace)
   if (!socket) return
+
   socket.removeAllListeners()
   socket.disconnect()
   sockets.delete(namespace)
@@ -62,19 +82,23 @@ export function emitWithAck<TResponse>(
   timeoutMs = 10000,
 ): Promise<TResponse> {
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => {
+    const timer = setTimeout(() => {
       reject(new Error(`Socket acknowledgement timed out for ${event}`))
     }, timeoutMs)
 
-    socket
-      .timeout(timeoutMs)
-      .emit(event, payload, (error: Error | null, response: TResponse) => {
-        window.clearTimeout(timer)
+    socket.timeout(timeoutMs).emit(
+      event,
+      payload,
+      (error: Error | null, response: TResponse) => {
+        clearTimeout(timer)
+
         if (error) {
           reject(error)
           return
         }
+
         resolve(response)
-      })
+      },
+    )
   })
 }
